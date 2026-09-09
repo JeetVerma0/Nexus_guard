@@ -1,7 +1,7 @@
 import subprocess
+from concurrent.futures import ThreadPoolExecutor,as_completed
 
-# target1 = "192.168.29.92"
-# target2 = "192.168.29.200"
+
 
 def ip_generator(start, end):
     targets = []
@@ -14,14 +14,24 @@ def ip_responder(target):
     
     result = subprocess.run(["ping", "-c", "1", target], capture_output=True, text=True)
     if result.returncode == 0:
-        print(f"{target} is reachable.")
+        for line in result.stdout.splitlines():
+            if "time=" in line:
+                rtt = line.split("time=")[1].split(" ")[0]
+                return f"{target} |  reachable  | response time: {rtt} ms"
     else:
-        print(f"{target} is not reachable.")
+        return f"{target} |  not reachable | response time: N/A"
 
-ip = ip_generator(90, 100)
+ip = ip_generator(1, 254)
+with ThreadPoolExecutor(max_workers=10) as executor:
+    futures = []
+    print("    IP       |   Status    | Response Time")
+    for i in ip:
+       future = executor.submit(ip_responder, i)
+       futures.append(future)
 
-for i in ip:
-    ip_responder(i)
+    for future in as_completed(futures):
+        result = future.result()
+        print(result)
 
 
 
